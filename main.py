@@ -1,11 +1,18 @@
-# from tkinter import *
-from tkinter import ttk, Tk
+import customtkinter
 
-root = Tk()
-frm = ttk.Frame(root, padding=10)
-frm.grid()
-ttk.Label(frm, text="Hello, world!").grid(column=0, row=0)
-ttk.Button(frm, text="Print", command=lambda: print("test")).grid(column=0, row=1)
-ttk.Button(frm, text="Quit", command=root.destroy).grid(column=0, row=2)
+customtkinter.set_appearance_mode("System")  # Modes: system (default), light, dark
+customtkinter.set_default_color_theme("blue")  # Themes: blue (default), dark-blue, green
 
-root.mainloop()
+app = customtkinter.CTk()  # create CTk window like you do with the Tk window
+app.geometry("400x240")
+
+
+def button_function():
+    print("button pressed")
+
+
+# Use CTkButton instead of tkinter Button
+button = customtkinter.CTkButton(master=app, text="CTkButton", command=button_function)
+button.place(relx=0.5, rely=0.5, anchor=customtkinter.CENTER)
+
+app.mainloop()
