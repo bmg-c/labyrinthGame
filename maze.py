@@ -1,6 +1,13 @@
 from enum import Enum
 from random import shuffle
 
+def cell_next_to(x0, y0, x1, y1):
+    diff_x = abs(x0 - x1)
+    diff_y = abs(y0 - y1)
+
+    if diff_x + diff_y >= 2 or diff_x + diff_y == 0:
+        return False
+    return True
 
 class CellState(Enum):
     EMPTY = 1
@@ -29,6 +36,34 @@ class Cell:
             directions.append("E")
         return directions
 
+    def direction_to(self, nc) -> str:
+        if cell_next_to(self.x, self.y, nc.x, nc.y):
+            return "None"
+        diff_x = self.x - nc.x
+        diff_y = self.y - nc.y
+
+        if diff_x == 0:
+            if diff_y == 1:
+                return "N"
+            elif diff_y == -1:
+                return "S"
+            else:
+                return "Same"
+        elif diff_x == -1:
+            return "E"
+        elif diff_x == 1:
+            return "W"
+        return "Error"
+
+    def __str__(self):
+        return f"{self.state}({self.x}, {self.y})"
+
+    def __unicode__(self):
+        return f"{self.state}({self.x}, {self.y})"
+
+    def __repr__(self):
+        return f"{self.state}({self.x}, {self.y})"
+
 
 add_x = {"N": 0, "S": 0, "W": -1, "E": 1}
 add_y = {"N": -1, "S": 1, "W": 0, "E": 0}
@@ -45,20 +80,35 @@ class Maze:
         self.start_cell = grid[0][0]
         self.exit_cell = grid[num_rows - 1][num_cols - 1]
 
+        self.is_solvable = False
+        self.path = []
+        self.solve("recursive_backtracking")
+
     def generate_grid(self) -> list[list[Cell]]:
         grid: list[list[Cell]] = []
 
-        for i in range(self.num_rows):
+        for y in range(self.num_rows):
             grid.append(list())
-            for j in range(self.num_cols):
-                grid[i].append(Cell(CellState.EMPTY, i, j))
+            for x in range(self.num_cols):
+                grid[y].append(Cell(CellState.EMPTY, x, y))
 
         return grid
 
     def clear_visited(self):
-        for i in range(self.num_rows):
-            for j in range(self.num_cols):
-                self.grid[i][j].visited = False
+        for y in range(self.num_rows):
+            for x in range(self.num_cols):
+                self.grid[y][x].visited = False
+
+    def get_cell_available_directions(self, cc):
+        wall_directions = cc.get_available_directions()
+        directions = []
+        print(f"({cc.y}, {cc.x}) - {wall_directions}")
+
+        for direction in wall_directions:
+            if not self.grid[cc.y + add_y[direction]][cc.x + add_x[direction]].visited:
+                directions.append(direction)
+
+        return directions
 
     def generate_maze(self, grid, algorithm) -> list[list[Cell]]:
         if algorithm == "recursive_backtracking":
@@ -108,31 +158,45 @@ class Maze:
                 print(char_grid[x][y], end='')
             print()
 
-    def is_solvable(self) -> bool:
+    def solve(self, algorithm: str):
+        if algorithm == "recursive_backtracking":
+            answer = self._solve_recursive_backtracking()
+            self.is_solvable = answer[0]
+            self.path = answer[1]
+        else:
+            print("No such solving algorithm")
+
+    def _solve_recursive_backtracking(self) -> (bool, list[Cell]):
         self.clear_visited()
-        self._solved = False
-        self._is_solvable(self.start_cell.x, self.start_cell.y, self.grid)
-        return self._solved
+        cx, cy = self.start_cell.x, self.start_cell.y
+        stack: list[Cell] = [self.grid[cy][cx]]
 
-    def _is_solvable(self, cx, cy, grid: list[list[Cell]]):
-        grid[cy][cx].visited = True
+        while True:
+            self.grid[cy][cx].visited = True
+            if self.grid[cy][cx] is not stack[-1]:
+                stack.append(self.grid[cy][cx])
+            if self.grid[cy][cx] is self.exit_cell:
+                return True, stack[1:-1]
 
-        directions: list[str] = grid[cy][cx].get_available_directions()
-        shuffle(directions)
-        # print(str(directions) + f" [{self.grid[cy][cx].x}, {self.grid[cy][cx].y}]")
+            directions = self.get_cell_available_directions(self.grid[cy][cx])
+            if len(directions) == 0:
+                if self.grid[cy][cx] is self.start_cell:
+                    break
+                stack.pop()
+                cc = stack[-1]
+                cx, cy = cc.x, cc.y
+                continue
+            shuffle(directions)
 
-        if cx == self.exit_cell.x and cy == self.exit_cell.y:
-            self._solved = True
+            direction = directions.pop()
+            nc = self.grid[cy + add_y[direction]][cx + add_x[direction]]
+            print(f"({cy}, {cx}) - ({nc.y}, {nc.x}) / {direction}")
+            cx, cy = nc.x, nc.y
 
-        for direction in directions:
-            nx, ny = cx + add_x[direction], cy + add_y[direction]
-
-            if (0 <= ny <= self.num_rows - 1) and (0 <= nx <= self.num_cols - 1) and not grid[ny][nx].visited:
-                grid[ny][nx].visited = True
-
-                self._is_solvable(nx, ny, grid)
+        return False, []
 
 
 new_maze = Maze(5, 5)
 new_maze.print_maze()
-print("Is solvable? " + str(new_maze.is_solvable()))
+print("Is solvable? " + str(new_maze.is_solvable))
+print("Path: " + str(new_maze.path))

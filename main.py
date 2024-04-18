@@ -29,6 +29,15 @@ class Block:
         self.state = state
         self.rectangle = None
 
+    def __str__(self):
+        return f"{self.state}({self.x}, {self.y})"
+
+    def __unicode__(self):
+        return f"{self.state}({self.x}, {self.y})"
+
+    def __repr__(self):
+        return f"{self.state}({self.x}, {self.y})"
+
 
 def cell_next_to(x0, y0, x1, y1):
     diff_x = abs(x0 - x1)
@@ -49,7 +58,8 @@ class MazeFrame(CTkFrame):
         self.lowest_size = 0
         self.canvas = None
         self.block_path = []
-        self.path = []
+        self.start_block = None
+        self.exit_block = None
 
         self.maze = Maze(30, 30)
 
@@ -81,7 +91,10 @@ class MazeFrame(CTkFrame):
         self.canvas.place(relx=0.5, rely=0.5, anchor=CENTER)
         self.canvas.bind("<B1-Motion>", self.left_click_motion_event)
         self.canvas.bind("<B3-Motion>", self.right_click_motion_event)
+        self.canvas.bind("<Button-3>", self.right_click_event)
+        self.fill_canvas_blocks()
 
+    def fill_canvas_blocks(self):
         self.canvas_blocks: list[list[Block]] = []
         for y in range(self.maze_height):
             self.canvas_blocks.append([])
@@ -104,7 +117,40 @@ class MazeFrame(CTkFrame):
                         self.canvas_blocks[y][x + 1].state = BlockState.EMPTY
 
         self.canvas_blocks[self.maze.start_cell.y * 2 + 1][self.maze.start_cell.x * 2 + 1].state = BlockState.START
+        self.start_block = self.canvas_blocks[self.maze.start_cell.y * 2 + 1][self.maze.start_cell.x * 2 + 1]
         self.canvas_blocks[self.maze.exit_cell.y * 2 + 1][self.maze.exit_cell.x * 2 + 1].state = BlockState.EXIT
+        self.exit_block = self.canvas_blocks[self.maze.exit_cell.y * 2 + 1][self.maze.exit_cell.x * 2 + 1]
+
+    def reset_canvas_blocks(self):
+        self.block_path = []
+        for y in range(self.maze_height):
+            for x in range(self.maze_width):
+                self.canvas_blocks[y][x].state = BlockState.WALL
+                self.canvas.itemconfig(self.canvas_blocks[y][x].rectangle, fill=constants["WALL_COLOR"])
+
+        for y in range(len(self.canvas_blocks)):
+            for x in range(len(self.canvas_blocks[0])):
+                if x % 2 == 1 and y % 2 == 1:
+                    self.canvas_blocks[y][x].state = BlockState.EMPTY
+                    self.canvas.itemconfig(self.canvas_blocks[y][x].rectangle, fill=constants["EMPTY_COLOR"])
+                    cellx, celly = int((x - 1) / 2), int((y - 1) / 2)  # 0,0-1,1  0,1-1,3  0,2-1,5
+                    if not self.maze.grid[celly][cellx].walls["N"]:
+                        self.canvas_blocks[y - 1][x].state = BlockState.EMPTY
+                        self.canvas.itemconfig(self.canvas_blocks[y-1][x].rectangle, fill=constants["EMPTY_COLOR"])
+                    if not self.maze.grid[celly][cellx].walls["S"]:
+                        self.canvas_blocks[y + 1][x].state = BlockState.EMPTY
+                        self.canvas.itemconfig(self.canvas_blocks[y+1][x].rectangle, fill=constants["EMPTY_COLOR"])
+                    if not self.maze.grid[celly][cellx].walls["W"]:
+                        self.canvas_blocks[y][x - 1].state = BlockState.EMPTY
+                        self.canvas.itemconfig(self.canvas_blocks[y][x-1].rectangle, fill=constants["EMPTY_COLOR"])
+                    if not self.maze.grid[celly][cellx].walls["E"]:
+                        self.canvas_blocks[y][x + 1].state = BlockState.EMPTY
+                        self.canvas.itemconfig(self.canvas_blocks[y][x+1].rectangle, fill=constants["EMPTY_COLOR"])
+
+        self.canvas_blocks[self.maze.start_cell.y * 2 + 1][self.maze.start_cell.x * 2 + 1].state = BlockState.START
+        self.canvas.itemconfig(self.start_block.rectangle, fill=constants["START_COLOR"])
+        self.canvas_blocks[self.maze.exit_cell.y * 2 + 1][self.maze.exit_cell.x * 2 + 1].state = BlockState.EXIT
+        self.canvas.itemconfig(self.exit_block.rectangle, fill=constants["EXIT_COLOR"])
 
     def draw_canvas(self):
         for y in range(0, self.maze_height):
@@ -133,39 +179,141 @@ class MazeFrame(CTkFrame):
 
                 self.canvas_blocks[y][x].rectangle = self.canvas.create_rectangle(*args, **kwargs)
 
+    def draw_path(self):
+        self.block_path = []
+        self.reset_canvas_blocks()
+        path = self.maze.path
+
+        prev_block = self.start_block
+
+        for cc in path:
+            block = self.canvas_blocks[cc.y * 2 + 1][cc.x * 2 + 1]
+            block.state = BlockState.PATH
+            self.canvas.itemconfig(block.rectangle, fill=constants["PATH_COLOR"])
+
+            block2 = self.canvas_blocks[block.y + int((prev_block.y - block.y) / 2)][block.x + int((prev_block.x - block.x) / 2)]
+            block2.state = BlockState.PATH
+            self.canvas.itemconfig(block2.rectangle, fill=constants["PATH_COLOR"])
+
+            self.block_path.append(block2)
+            self.block_path.append(block)
+
+            prev_block = block
+
+        block2 = self.canvas_blocks[self.exit_block.y + int((prev_block.y - self.exit_block.y) / 2)][self.exit_block.x + int((prev_block.x - self.exit_block.x) / 2)]
+        block2.state = BlockState.PATH
+        self.canvas.itemconfig(block2.rectangle, fill=constants["PATH_COLOR"])
+        self.block_path.append(block2)
+
+    def is_straight_to(self, block1, block2) -> bool:
+        if block1.x == block2.x:
+            x = block1.x
+            ran = range(block1.y + 1, block2.y)
+            if block1.y > block2.y:
+                ran = reversed(ran)
+            for y in ran:
+                if self.canvas_blocks[y][x].state != BlockState.EMPTY:
+                    return False
+        elif block1.y == block2.y:
+            y = block1.y
+            ran = range(block1.x + 1, block2.y)
+            if block1.x > block2.x:
+                ran = reversed(ran)
+            for x in ran:
+                if self.canvas_blocks[y][x].state != BlockState.EMPTY:
+                    return False
+        else:
+            return False
+        return True
+
     def left_click_motion_event(self, event: Event):
         if self.canvas is None:
             return
         block_x = int(event.x / self.block_width)
         block_y = int(event.y / self.block_height)
-        print(f"({block_x}, {block_y})")
+        clicked_block = self.canvas_blocks[block_y][block_x]
 
-        state = self.canvas_blocks[block_y][block_x].state
-        if state == BlockState.EMPTY:
-            # if len(self.block_path) == 0 and not cell_next_to(block_x, block_y, self.maze.start_cell.x, self.maze.start_cell.y):
+        if clicked_block.state == BlockState.EMPTY:
+            if len(self.block_path) == 0:
+                last_block = self.start_block
+            else:
+                last_block = self.block_path[-1]
+
+            if not self.is_straight_to(last_block, clicked_block):
+                return
+            print(clicked_block)
+
+            if last_block.x == clicked_block.x:
+                x = last_block.x
+                ran = range(last_block.y + 1, clicked_block.y + 1)
+                if last_block.y > clicked_block.y:
+                    ran = reversed(ran)
+                for y in ran:
+                    block = self.canvas_blocks[y][x]
+                    self.block_path.append(block)
+                    block.state = BlockState.PATH
+                    self.canvas.itemconfig(block.rectangle, fill=constants["PATH_COLOR"])
+            elif last_block.y == clicked_block.y:
+                y = last_block.y
+                ran = range(last_block.x + 1, clicked_block.x + 1)
+                if last_block.x > clicked_block.x:
+                    ran = reversed(ran)
+                for x in ran:
+                    block = self.canvas_blocks[y][x]
+                    self.block_path.append(block)
+                    block.state = BlockState.PATH
+                    self.canvas.itemconfig(block.rectangle, fill=constants["PATH_COLOR"])
+
+            if cell_next_to(block_x, block_y, self.exit_block.x, self.exit_block.y):
+                print("End!!!")
+
+            # if not cell_next_to(block_x, block_y, last_block.x, last_block.y):
             #     return
-            # last_block = self.block_path[len(self.block_path) - 1]
-            # elif cell_next_to(block_x, block_y, last_block.x, last_block.y
-            self.canvas_blocks[block_y][block_x].state = BlockState.PATH
-            self.canvas.itemconfig(self.canvas_blocks[block_y][block_x].rectangle, fill=constants["PATH_COLOR"])
-
-
-
-            return
+            #
+            # if cell_next_to(block_x, block_y, self.exit_block.x, self.exit_block.y):
+            #     print("End!!!")
+            #
+            # self.block_path.append(clicked_block)
+            # clicked_block.state = BlockState.PATH
+            # self.canvas.itemconfig(clicked_block.rectangle, fill=constants["PATH_COLOR"])
 
     def right_click_motion_event(self, event: Event):
         if self.canvas is None:
             return
         block_x = int(event.x / self.block_width)
         block_y = int(event.y / self.block_height)
-        print(f"({block_x}, {block_y})")
+        clicked_block = self.canvas_blocks[block_y][block_x]
 
-        state = self.canvas_blocks[block_y][block_x].state
-        if state == BlockState.PATH:
-            self.canvas_blocks[block_y][block_x].state = BlockState.EMPTY
-            self.canvas.itemconfig(self.canvas_blocks[block_y][block_x].rectangle, fill=constants["EMPTY_COLOR"])
+        if clicked_block.state == BlockState.PATH:
+            if len(self.block_path) == 0:
+                return
+            else:
+                last_block = self.block_path[-1]
 
+            if clicked_block is not last_block:
+                return
+
+            self.block_path.pop()
+            clicked_block.state = BlockState.EMPTY
+            self.canvas.itemconfig(clicked_block.rectangle, fill=constants["EMPTY_COLOR"])
+
+    def right_click_event(self, event: Event):
+        if self.canvas is None:
             return
+        block_x = int(event.x / self.block_width)
+        block_y = int(event.y / self.block_height)
+        clicked_block = self.canvas_blocks[block_y][block_x]
+
+        if clicked_block.state == BlockState.PATH:
+            if len(self.block_path) == 0:
+                return
+
+            index = self.block_path.index(clicked_block)
+            rest_block_path = self.block_path[index+1:]
+            self.block_path = self.block_path[:index+1]
+            for block in rest_block_path:
+                block.state = BlockState.EMPTY
+                self.canvas.itemconfig(block.rectangle, fill=constants["EMPTY_COLOR"])
 
 
 class App(CTk):
@@ -189,6 +337,7 @@ class App(CTk):
         self.maze_frame.grid(column=1, row=1, columnspan=2, sticky="news")
         self.maze_frame.init_canvas()
         self.maze_frame.draw_canvas()
+        # self.maze_frame.draw_path()
 
         # self.maze_frame.update()
         # print(self.maze_frame.winfo_height())
