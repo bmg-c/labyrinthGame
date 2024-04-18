@@ -5,7 +5,7 @@ from random import shuffle
 class CellState(Enum):
     EMPTY = 1
     PATH = 2
-    ENTER = 3
+    START = 3
     EXIT = 4
 
 
@@ -43,7 +43,7 @@ class Maze:
         self.grid_size = num_rows * num_cols
         self.grid: list[list[Cell]] = self.generate_maze(grid, algorithm)
         self.start_cell = grid[0][0]
-        self.end_cell = grid[num_rows-1][num_cols-1]
+        self.exit_cell = grid[num_rows - 1][num_cols - 1]
 
     def generate_grid(self) -> list[list[Cell]]:
         grid: list[list[Cell]] = []
@@ -119,9 +119,9 @@ class Maze:
 
         directions: list[str] = grid[cy][cx].get_available_directions()
         shuffle(directions)
-        print(str(directions) + f" [{self.grid[cy][cx].x}, {self.grid[cy][cx].y}]")
+        # print(str(directions) + f" [{self.grid[cy][cx].x}, {self.grid[cy][cx].y}]")
 
-        if cx == self.end_cell.x and cy == self.end_cell.y:
+        if cx == self.exit_cell.x and cy == self.exit_cell.y:
             self._solved = True
 
         for direction in directions:
@@ -133,6 +133,6 @@ class Maze:
                 self._is_solvable(nx, ny, grid)
 
 
-new_maze = Maze(6, 6)
+new_maze = Maze(5, 5)
 new_maze.print_maze()
 print("Is solvable? " + str(new_maze.is_solvable()))
