@@ -1,8 +1,9 @@
 from customtkinter import *
 from customtkinter import CTkFrame
-from maze import Maze
+from maze import Maze, Cell
 from tkinter import Event
 from enum import Enum
+import pickle
 
 
 constants = {
@@ -12,6 +13,16 @@ constants = {
     "PATH_COLOR": "green",
     "EMPTY_COLOR": "#ddd",
 }
+
+
+def save_grid_to_file(grid: list[list[Cell]], filepath: str) -> None:
+    filehandler = open(filepath, 'wb')
+    pickle.dump(grid, filehandler, pickle.HIGHEST_PROTOCOL)
+
+
+def read_grid_from_file(filepath: str) -> list[list[Cell]]:
+    filehandler = open(filepath, 'rb')
+    return pickle.load(filehandler)
 
 
 class BlockState(Enum):
@@ -48,11 +59,23 @@ def cell_next_to(x0, y0, x1, y1):
     return True
 
 
-class MazeFrame(CTkFrame):
-    def __init__(self, master):
-        # super().__init__(master, width=700, height=700)
+class MazeBuilderWindow(CTkToplevel):
+    def __init__(self, master: CTk, size: int):
         super().__init__(master)
-        self.master = master
+
+        self.title("Maze Builder")
+        self.geometry("750x800")
+        self.columnconfigure((0, 1), weight=1, uniform="group2")
+        self.rowconfigure((0, 1), weight=1, uniform="group3")
+        self.resizable(False, False)
+
+
+
+
+class MazeFrame(CTkFrame):
+    def __init__(self, master: CTk | CTkFrame):
+        super().__init__(master)
+        self.master: CTk = master
         self.widget_width = 0
         self.widget_height = 0
         self.lowest_size = 0
@@ -62,13 +85,10 @@ class MazeFrame(CTkFrame):
         self.exit_block = None
 
         self.maze = Maze(30, 30)
-
-        # self.grid_columnconfigure(0, weight=1)
-        # self.grid_rowconfigure(0, weight=1)
+        save_grid_to_file(self.maze.grid, "./test.grid")
+        self.maze.grid = read_grid_from_file("./test.grid")
 
         self.update_widget_size()
-        # self.canvas.pack(anchor="center")
-        # self.canvas.pack(expand=YES, fill=BOTH, anchor="center")
 
     def update_widget_size(self):
         self.master.update()
@@ -89,18 +109,16 @@ class MazeFrame(CTkFrame):
         print(f"{self.canvas_width}x{self.canvas_height}")
         self.canvas = CTkCanvas(self, width=self.canvas_width, height=self.canvas_height)
         self.canvas.place(relx=0.5, rely=0.5, anchor=CENTER)
-        self.canvas.bind("<B1-Motion>", self.left_click_motion_event)
+        self.canvas.bind("<B1-Motion>", self.left_click_event)
+        self.canvas.bind("<Button-1>", self.left_click_event)
         self.canvas.bind("<B3-Motion>", self.right_click_motion_event)
         self.canvas.bind("<Button-3>", self.right_click_event)
-        self.fill_canvas_blocks()
 
-    def fill_canvas_blocks(self):
         self.canvas_blocks: list[list[Block]] = []
         for y in range(self.maze_height):
             self.canvas_blocks.append([])
             for x in range(self.maze_width):
                 self.canvas_blocks[y].append(Block(x, y, BlockState.WALL))
-
 
         for y in range(len(self.canvas_blocks)):
             for x in range(len(self.canvas_blocks[0])):
@@ -206,27 +224,36 @@ class MazeFrame(CTkFrame):
         self.block_path.append(block2)
 
     def is_straight_to(self, block1, block2) -> bool:
+        # return True
         if block1.x == block2.x:
             x = block1.x
-            ran = range(block1.y + 1, block2.y)
+            diff = 1
+            y = block1.y + 1
             if block1.y > block2.y:
-                ran = reversed(ran)
-            for y in ran:
+                diff = -1
+                y = block1.y - 1
+
+            while y != block2.y:
                 if self.canvas_blocks[y][x].state != BlockState.EMPTY:
                     return False
+                y += diff
         elif block1.y == block2.y:
             y = block1.y
-            ran = range(block1.x + 1, block2.y)
+            diff = 1
+            x = block1.x + 1
             if block1.x > block2.x:
-                ran = reversed(ran)
-            for x in ran:
+                diff = -1
+                x = block1.x - 1
+
+            while x != block2.x:
                 if self.canvas_blocks[y][x].state != BlockState.EMPTY:
                     return False
+                x += diff
         else:
             return False
         return True
 
-    def left_click_motion_event(self, event: Event):
+    def left_click_event(self, event: Event):
         if self.canvas is None:
             return
         block_x = int(event.x / self.block_width)
@@ -245,24 +272,41 @@ class MazeFrame(CTkFrame):
 
             if last_block.x == clicked_block.x:
                 x = last_block.x
-                ran = range(last_block.y + 1, clicked_block.y + 1)
+                diff = 1
+                y = last_block.y + 1
                 if last_block.y > clicked_block.y:
-                    ran = reversed(ran)
-                for y in ran:
+                    diff = -1
+                    y = last_block.y - 1
+
+                while y != clicked_block.y:
                     block = self.canvas_blocks[y][x]
                     self.block_path.append(block)
                     block.state = BlockState.PATH
                     self.canvas.itemconfig(block.rectangle, fill=constants["PATH_COLOR"])
+                    y += diff
+                self.block_path.append(clicked_block)
+                clicked_block.state = BlockState.PATH
+                self.canvas.itemconfig(clicked_block.rectangle, fill=constants["PATH_COLOR"])
             elif last_block.y == clicked_block.y:
                 y = last_block.y
-                ran = range(last_block.x + 1, clicked_block.x + 1)
+                diff = 1
+                x = last_block.x + 1
                 if last_block.x > clicked_block.x:
-                    ran = reversed(ran)
-                for x in ran:
+                    diff = -1
+                    x = last_block.x - 1
+
+                while x != clicked_block.x:
                     block = self.canvas_blocks[y][x]
                     self.block_path.append(block)
                     block.state = BlockState.PATH
                     self.canvas.itemconfig(block.rectangle, fill=constants["PATH_COLOR"])
+                    x += diff
+                self.block_path.append(clicked_block)
+                clicked_block.state = BlockState.PATH
+                self.canvas.itemconfig(clicked_block.rectangle, fill=constants["PATH_COLOR"])
+            else:
+                print("Return")
+                return
 
             if cell_next_to(block_x, block_y, self.exit_block.x, self.exit_block.y):
                 print("End!!!")
@@ -337,10 +381,6 @@ class App(CTk):
         self.maze_frame.grid(column=1, row=1, columnspan=2, sticky="news")
         self.maze_frame.init_canvas()
         self.maze_frame.draw_canvas()
-        # self.maze_frame.draw_path()
-
-        # self.maze_frame.update()
-        # print(self.maze_frame.winfo_height())
 
     def init_upper_panel(self):
         self.upper_panel = CTkFrame(self)
@@ -393,11 +433,15 @@ class App(CTk):
         self.generate_button = CTkButton(self.settings_frame, text="Сгенерировать", command=self.generate_labyrinth)
         self.link_file_button = CTkButton(self.settings_frame, text="Прикрепить файл", command=self.open_file)
         self.info_label = CTkLabel(self.settings_frame, text="")
+        self.maze_builder_button = CTkButton(self.settings_frame, text="Построитель лабиринтов", command=self.launch_maze_builder)
         self.random_click()
         self.info_label.grid(row=3, column=1, sticky=W+N+S+N)
 
         self.start_button = CTkButton(self.controls_menu, text="Начать игру")
         self.start_button.grid(row=2, column=0, sticky=W+E+N+S)
+
+    def launch_maze_builder(self):
+        self.maze_builder = MazeBuilderWindow(self)
 
     def generate_labyrinth(self):
         size_str = self.size_str.get()
@@ -432,11 +476,13 @@ class App(CTk):
         self.link_file_button.grid_forget()
         self.generate_button.grid(row=3, column=0)
         self.size_entry.configure(state=NORMAL)
+        self.maze_builder_button.grid_forget()
 
     def custom_click(self):
         self.generate_button.grid_forget()
         self.link_file_button.grid(row=3, column=0)
         self.size_entry.configure(state=DISABLED)
+        self.maze_builder_button.grid(row=4, column=0)
 
 
 app = App()

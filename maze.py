@@ -69,20 +69,106 @@ add_x = {"N": 0, "S": 0, "W": -1, "E": 1}
 add_y = {"N": -1, "S": 1, "W": 0, "E": 0}
 opposite = {"N": "S", "S": "N", "W": "E", "E": "W"}
 
+GEN_ALGORITHMS = ["recursive_backtracking", "custom"]
+SOLVING_ALGORITHMS = ["recursive_backtracking"]
+
+
+class SizeException(Exception):
+    pass
+
+
+class MazeValidationException(Exception):
+    pass
+
+
+class AlgorithmException(Exception):
+    pass
+
+
+class SolvingException(Exception):
+    pass
+
+
+class ArgumentsException(Exception):
+    pass
+
+
+def check_input_data(num_rows: int, num_cols: int, gen_algorithm: str, solving_algorithm: str, custom_grid: list[list[Cell]] | None) -> None:
+    if custom_grid is not None:
+        num_rows = len(custom_grid)
+        if num_rows == 0:
+            raise SizeException("Size of the maze can't lower than 2")
+        num_cols = len(custom_grid[0])
+
+        for y in range(num_rows):
+            for x in range(num_cols):
+                if (x, y) != (custom_grid[y][x].y, custom_grid[y][x].x):
+                    raise MazeValidationException("Coordinates of cells are not representative of their placement")
+
+        gen_algorithm = "custom"
+    if num_rows < 2 or num_cols < 2:
+        raise SizeException("Size of the maze can't lower than 2")
+    if num_rows > 30 or num_cols > 30:
+        raise SizeException("Size of the maze can't higher than 30")
+    if gen_algorithm not in GEN_ALGORITHMS:
+        raise AlgorithmException("No such generation algorithm")
+    if solving_algorithm not in SOLVING_ALGORITHMS:
+        raise AlgorithmException("No such solving algorithm")
+    return None
+
+
+def get_start_cell(grid: list[list[Cell]]) -> Cell:
+    for y in range(len(grid)):
+        for x in range(len(grid[y])):
+            if grid[y][x].state == CellState.START:
+                return grid[y][x]
+    return grid[0][0]
+
+
+def get_exit_cell(grid: list[list[Cell]]) -> Cell:
+    for y in range(len(grid)):
+        for x in range(len(grid[y])):
+            if grid[y][x].state == CellState.EXIT:
+                return grid[y][x]
+    return grid[-1][-1]
+
 
 class Maze:
-    def __init__(self, num_rows: int, num_cols: int, algorithm: str = "recursive_backtracking"):
-        self.num_rows = num_rows
-        self.num_cols = num_cols
-        grid = self.generate_grid()
-        self.grid_size = num_rows * num_cols
-        self.grid: list[list[Cell]] = self.generate_maze(grid, algorithm)
-        self.start_cell = grid[0][0]
-        self.exit_cell = grid[num_rows - 1][num_cols - 1]
+    def __init__(self, num_rows: int = 0, num_cols: int = 0, gen_algorithm: str = "recursive_backtracking", solving_algorithm: str = "recursive_backtracking",
+                 custom_grid: list[list[Cell]] | None = None):
+        check_input_data(num_rows, num_cols, gen_algorithm, solving_algorithm, custom_grid)
 
-        self.is_solvable = False
-        self.path = []
-        self.solve("recursive_backtracking")
+        if custom_grid is None:
+            self.num_rows: int = num_rows
+            self.num_cols: int = num_cols
+            self.grid_size: int = num_rows * num_cols
+
+            self.grid: list[list[Cell]] = self.generate_grid()
+            self.generate_maze(gen_algorithm)
+            self.start_cell: Cell = get_start_cell(self.grid)
+            self.exit_cell: Cell = get_exit_cell(self.grid)
+
+            self.is_solvable: bool = False
+            self.path: list[Cell] = []
+            self.solve(solving_algorithm)
+            if not self.is_solvable or len(self.path) == 0:
+                raise SolvingException("The maze is not solvable. It does not have a path from start to end")
+        elif custom_grid is list[list[Cell]]:
+            self.num_rows: int = len(custom_grid)
+            self.num_cols: int = len(custom_grid[0])
+            self.grid_size: int = num_rows * num_cols
+
+            self.grid: list[list[Cell]] = custom_grid.copy()
+            self.start_cell: Cell = get_start_cell(self.grid)
+            self.exit_cell: Cell = get_exit_cell(self.grid)
+
+            self.is_solvable: bool = False
+            self.path: list[Cell] = []
+            self.solve(solving_algorithm)
+            if not self.is_solvable or len(self.path) == 0:
+                raise SolvingException("The maze is not solvable. It does not have a path from start to end")
+        else:
+            raise ArgumentsException("Not enough arguments provided")
 
     def generate_grid(self) -> list[list[Cell]]:
         grid: list[list[Cell]] = []
@@ -110,11 +196,9 @@ class Maze:
 
         return directions
 
-    def generate_maze(self, grid, algorithm) -> list[list[Cell]]:
+    def generate_maze(self, algorithm) -> None:
         if algorithm == "recursive_backtracking":
-            self._recursive_backtracking_method(0, 0, grid)
-            return grid
-        return grid
+            self._recursive_backtracking_method(0, 0, self.grid)
 
     def _recursive_backtracking_method(self, cx, cy, grid):
         grid[cy][cx].visited = True
