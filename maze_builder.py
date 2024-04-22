@@ -98,3 +98,88 @@ class MazeBuilderWindow(CTkToplevel):
         print(self.filepath)
         pass
 
+    def update_widget_size(self):
+        self.master.update()
+        self.update()
+        self.canvas.update()
+        self.widget_width = self.canvas.winfo_width()
+        self.widget_height = self.canvas.winfo_height()
+        self.lowest_size = self.widget_width if self.widget_width < self.widget_height else self.widget_height
+
+    def init_canvas(self):
+        self.update_widget_size()
+        print(f"{self.widget_width}x{self.widget_height}")
+        self.maze_width = self.maze.num_cols * 2 + 1
+        self.maze_height = self.maze.num_rows * 2 + 1
+        self.block_width = int(self.lowest_size / self.maze_width)
+        self.block_height = int(self.lowest_size / self.maze_height)
+        self.canvas_width = self.block_width * self.maze_width
+        self.canvas_height = self.block_height * self.maze_height
+        print(f"{self.canvas_width}x{self.canvas_height}")
+        self.canvas = CTkCanvas(self, width=self.canvas_width, height=self.canvas_height)
+        self.canvas.place(relx=0.5, rely=0.5, anchor=CENTER)
+        self.canvas.bind("<B1-Motion>", self.left_click_event)
+        self.canvas.bind("<Button-1>", self.left_click_event)
+        self.canvas.bind("<B3-Motion>", self.right_click_motion_event)
+        self.canvas.bind("<Button-3>", self.right_click_event)
+
+        self.canvas_blocks: list[list[Block]] = []
+        for y in range(self.maze_height):
+            self.canvas_blocks.append([])
+            for x in range(self.maze_width):
+                self.canvas_blocks[y].append(Block(x, y, BlockState.WALL))
+
+        for y in range(len(self.canvas_blocks)):
+            for x in range(len(self.canvas_blocks[0])):
+                if x % 2 == 1 and y % 2 == 1:
+                    self.canvas_blocks[y][x].state = BlockState.EMPTY
+                    cellx, celly = int((x - 1) / 2), int((y - 1) / 2)  # 0,0-1,1  0,1-1,3  0,2-1,5
+                    if not self.maze.grid[celly][cellx].walls["N"]:
+                        self.canvas_blocks[y - 1][x].state = BlockState.EMPTY
+                    if not self.maze.grid[celly][cellx].walls["S"]:
+                        self.canvas_blocks[y + 1][x].state = BlockState.EMPTY
+                    if not self.maze.grid[celly][cellx].walls["W"]:
+                        self.canvas_blocks[y][x - 1].state = BlockState.EMPTY
+                    if not self.maze.grid[celly][cellx].walls["E"]:
+                        self.canvas_blocks[y][x + 1].state = BlockState.EMPTY
+
+        self.canvas_blocks[self.maze.start_cell.y * 2 + 1][self.maze.start_cell.x * 2 + 1].state = BlockState.START
+        self.start_block = self.canvas_blocks[self.maze.start_cell.y * 2 + 1][self.maze.start_cell.x * 2 + 1]
+        self.canvas_blocks[self.maze.exit_cell.y * 2 + 1][self.maze.exit_cell.x * 2 + 1].state = BlockState.EXIT
+        self.exit_block = self.canvas_blocks[self.maze.exit_cell.y * 2 + 1][self.maze.exit_cell.x * 2 + 1]
+
+    def reset_canvas_blocks(self):
+        self.block_path = []
+        for y in range(self.maze_height):
+            for x in range(self.maze_width):
+                self.canvas_blocks[y][x].state = BlockState.WALL
+                self.canvas.itemconfig(self.canvas_blocks[y][x].rectangle, fill=constants["WALL_COLOR"])
+
+        for y in range(len(self.canvas_blocks)):
+            for x in range(len(self.canvas_blocks[0])):
+                if x % 2 == 1 and y % 2 == 1:
+                    self.canvas_blocks[y][x].state = BlockState.EMPTY
+                    self.canvas.itemconfig(self.canvas_blocks[y][x].rectangle, fill=constants["EMPTY_COLOR"])
+                    cellx, celly = int((x - 1) / 2), int((y - 1) / 2)  # 0,0-1,1  0,1-1,3  0,2-1,5
+                    if not self.maze.grid[celly][cellx].walls["N"]:
+                        self.canvas_blocks[y - 1][x].state = BlockState.EMPTY
+                        self.canvas.itemconfig(self.canvas_blocks[y-1][x].rectangle, fill=constants["EMPTY_COLOR"])
+                    if not self.maze.grid[celly][cellx].walls["S"]:
+                        self.canvas_blocks[y + 1][x].state = BlockState.EMPTY
+                        self.canvas.itemconfig(self.canvas_blocks[y+1][x].rectangle, fill=constants["EMPTY_COLOR"])
+                    if not self.maze.grid[celly][cellx].walls["W"]:
+                        self.canvas_blocks[y][x - 1].state = BlockState.EMPTY
+                        self.canvas.itemconfig(self.canvas_blocks[y][x-1].rectangle, fill=constants["EMPTY_COLOR"])
+                    if not self.maze.grid[celly][cellx].walls["E"]:
+                        self.canvas_blocks[y][x + 1].state = BlockState.EMPTY
+                        self.canvas.itemconfig(self.canvas_blocks[y][x+1].rectangle, fill=constants["EMPTY_COLOR"])
+
+        self.canvas_blocks[self.maze.start_cell.y * 2 + 1][self.maze.start_cell.x * 2 + 1].state = BlockState.START
+        self.canvas.itemconfig(self.start_block.rectangle, fill=constants["START_COLOR"])
+        self.canvas_blocks[self.maze.exit_cell.y * 2 + 1][self.maze.exit_cell.x * 2 + 1].state = BlockState.EXIT
+        self.canvas.itemconfig(self.exit_block.rectangle, fill=constants["EXIT_COLOR"])
+
+
+app = CTk()
+app.maze_window = MazeBuilderWindow(app)
+app.mainloop()

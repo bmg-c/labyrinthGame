@@ -31,8 +31,6 @@ class MazeFrame(CTkFrame):
 
         self.maze = Maze(30, 30)
 
-        self.update_widget_size()
-
     def update_widget_size(self):
         self.master.update()
         self.update()
@@ -386,6 +384,7 @@ class App(CTk):
 
     def launch_maze_builder(self):
         self.maze_builder = MazeBuilderWindow(self)
+        self.maze_builder.update_widget_size()
 
     def generate_labyrinth(self):
         size_str = self.size_str.get()
