@@ -1,53 +1,11 @@
 from customtkinter import *
 from customtkinter import CTkFrame
 from maze import Maze, Cell
+from maze_builder import MazeBuilderWindow
 from tkinter import Event
 from enum import Enum
+from common import constants, Block, BlockState
 import pickle
-
-
-constants = {
-    "START_COLOR": "blue",
-    "EXIT_COLOR": "blue",
-    "WALL_COLOR": "black",
-    "PATH_COLOR": "green",
-    "EMPTY_COLOR": "#ddd",
-}
-
-
-def save_grid_to_file(grid: list[list[Cell]], filepath: str) -> None:
-    filehandler = open(filepath, 'wb')
-    pickle.dump(grid, filehandler, pickle.HIGHEST_PROTOCOL)
-
-
-def read_grid_from_file(filepath: str) -> list[list[Cell]]:
-    filehandler = open(filepath, 'rb')
-    return pickle.load(filehandler)
-
-
-class BlockState(Enum):
-    WALL = 0
-    EMPTY = 1
-    PATH = 2
-    START = 3
-    EXIT = 4
-
-
-class Block:
-    def __init__(self, x, y, state: BlockState):
-        self.x = x
-        self.y = y
-        self.state = state
-        self.rectangle = None
-
-    def __str__(self):
-        return f"{self.state}({self.x}, {self.y})"
-
-    def __unicode__(self):
-        return f"{self.state}({self.x}, {self.y})"
-
-    def __repr__(self):
-        return f"{self.state}({self.x}, {self.y})"
 
 
 def cell_next_to(x0, y0, x1, y1):
@@ -57,19 +15,6 @@ def cell_next_to(x0, y0, x1, y1):
     if diff_x + diff_y >= 2 or diff_x + diff_y == 0:
         return False
     return True
-
-
-class MazeBuilderWindow(CTkToplevel):
-    def __init__(self, master: CTk, size: int):
-        super().__init__(master)
-
-        self.title("Maze Builder")
-        self.geometry("750x800")
-        self.columnconfigure((0, 1), weight=1, uniform="group2")
-        self.rowconfigure((0, 1), weight=1, uniform="group3")
-        self.resizable(False, False)
-
-
 
 
 class MazeFrame(CTkFrame):
@@ -85,8 +30,6 @@ class MazeFrame(CTkFrame):
         self.exit_block = None
 
         self.maze = Maze(30, 30)
-        save_grid_to_file(self.maze.grid, "./test.grid")
-        self.maze.grid = read_grid_from_file("./test.grid")
 
         self.update_widget_size()
 
@@ -381,6 +324,7 @@ class App(CTk):
         self.maze_frame.grid(column=1, row=1, columnspan=2, sticky="news")
         self.maze_frame.init_canvas()
         self.maze_frame.draw_canvas()
+        self.maze_frame.draw_path()
 
     def init_upper_panel(self):
         self.upper_panel = CTkFrame(self)
