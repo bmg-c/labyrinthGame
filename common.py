@@ -8,6 +8,8 @@ constants = {
     "EMPTY_COLOR": "#ddd",
 }
 
+blockState_to_color = ["WALL_COLOR", "EMPTY_COLOR", "PATH_COLOR", "START_COLOR", "EXIT_COLOR"]
+
 
 class BlockState(Enum):
     WALL = 0
@@ -15,6 +17,9 @@ class BlockState(Enum):
     PATH = 2
     START = 3
     EXIT = 4
+
+    def to_color(self):
+        return blockState_to_color[self.value]
 
 
 class Block:

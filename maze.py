@@ -102,7 +102,7 @@ def check_input_data(num_rows: int, num_cols: int, gen_algorithm: str, solving_a
 
         for y in range(num_rows):
             for x in range(num_cols):
-                if (x, y) != (custom_grid[y][x].y, custom_grid[y][x].x):
+                if (x, y) != (custom_grid[y][x].x, custom_grid[y][x].y):
                     raise MazeValidationException("Coordinates of cells are not representative of their placement")
 
         gen_algorithm = "custom"
@@ -153,7 +153,7 @@ class Maze:
             self.solve(solving_algorithm)
             if not self.is_solvable or len(self.path) == 0:
                 raise SolvingException("The maze is not solvable. It does not have a path from start to end")
-        elif custom_grid is list[list[Cell]]:
+        elif custom_grid is not None:
             self.num_rows: int = len(custom_grid)
             self.num_cols: int = len(custom_grid[0])
             self.grid_size: int = num_rows * num_cols
@@ -188,7 +188,6 @@ class Maze:
     def get_cell_available_directions(self, cc):
         wall_directions = cc.get_available_directions()
         directions = []
-        print(f"({cc.y}, {cc.x}) - {wall_directions}")
 
         for direction in wall_directions:
             if not self.grid[cc.y + add_y[direction]][cc.x + add_x[direction]].visited:
@@ -274,13 +273,12 @@ class Maze:
 
             direction = directions.pop()
             nc = self.grid[cy + add_y[direction]][cx + add_x[direction]]
-            print(f"({cy}, {cx}) - ({nc.y}, {nc.x}) / {direction}")
             cx, cy = nc.x, nc.y
 
         return False, []
 
 
 new_maze = Maze(5, 5)
-new_maze.print_maze()
-print("Is solvable? " + str(new_maze.is_solvable))
-print("Path: " + str(new_maze.path))
+# new_maze.print_maze()
+# print("Is solvable? " + str(new_maze.is_solvable))
+# print("Path: " + str(new_maze.path))

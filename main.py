@@ -1,3 +1,4 @@
+from CTkMessagebox import CTkMessagebox
 from customtkinter import *
 from customtkinter import CTkFrame
 from maze import Maze, Cell
@@ -29,7 +30,7 @@ class MazeFrame(CTkFrame):
         self.start_block = None
         self.exit_block = None
 
-        self.maze = Maze(30, 30)
+        self.maze: Maze | None = None
 
     def update_widget_size(self):
         self.master.update()
@@ -52,7 +53,7 @@ class MazeFrame(CTkFrame):
         self.canvas.place(relx=0.5, rely=0.5, anchor=CENTER)
         self.canvas.bind("<B1-Motion>", self.left_click_event)
         self.canvas.bind("<Button-1>", self.left_click_event)
-        self.canvas.bind("<B3-Motion>", self.right_click_motion_event)
+        self.canvas.bind("<B3-Motion>", self.right_click_event)
         self.canvas.bind("<Button-3>", self.right_click_event)
 
         self.canvas_blocks: list[list[Block]] = []
@@ -292,6 +293,12 @@ class MazeFrame(CTkFrame):
         if clicked_block.state == BlockState.PATH:
             if len(self.block_path) == 0:
                 return
+            if clicked_block is self.block_path[-1]:
+                clicked_block.state = BlockState.EMPTY
+                self.canvas.itemconfig(clicked_block.rectangle, fill=constants["EMPTY_COLOR"])
+                self.block_path.pop()
+                return
+
 
             index = self.block_path.index(clicked_block)
             rest_block_path = self.block_path[index+1:]
@@ -320,9 +327,6 @@ class App(CTk):
 
         self.maze_frame = MazeFrame(self)
         self.maze_frame.grid(column=1, row=1, columnspan=2, sticky="news")
-        self.maze_frame.init_canvas()
-        self.maze_frame.draw_canvas()
-        self.maze_frame.draw_path()
 
     def init_upper_panel(self):
         self.upper_panel = CTkFrame(self)
@@ -330,7 +334,7 @@ class App(CTk):
         self.upper_panel.grid_columnconfigure((0, 1, 2), weight=1)
         self.upper_panel.grid_rowconfigure(0, weight=1)
 
-        self.return_button = CTkButton(self.upper_panel, text="Вернуться")
+        self.return_button = CTkButton(self.upper_panel, text="Закончить и выйти", command=self.go_back)
         self.return_button_hide()
         self.title_label = CTkLabel(self.upper_panel, text="Лабиринт")
         self.title_label.grid(row=0, column=1, sticky="n")
@@ -343,8 +347,15 @@ class App(CTk):
     def return_button_hide(self) -> None:
         self.return_button.grid_forget()
 
+    def go_back(self) -> None:
+        self.return_button_hide()
+        self.maze_frame.canvas.place_forget()
+        self.game_menu.grid_forget()
+        self.controls_menu.grid(column=0, row=1, sticky="news")
+
     def init_controls_menu(self):
         self.filepath = ""
+        self.custom_grid: list[list[Cell]] | None = None
         self.controls_menu = CTkFrame(self)
 
         self.grid_columnconfigure((0, 1), weight=1)
@@ -372,33 +383,17 @@ class App(CTk):
         self.size_entry.configure(validate='all', validatecommand=(self.register(self.size_validate), '%P', '%V'))
         self.size_entry.grid(row=2, column=1)
 
-        self.generate_button = CTkButton(self.settings_frame, text="Сгенерировать", command=self.generate_labyrinth)
         self.link_file_button = CTkButton(self.settings_frame, text="Прикрепить файл", command=self.open_file)
-        self.info_label = CTkLabel(self.settings_frame, text="")
+        self.info_label= CTkLabel(self.settings_frame, text="")
         self.maze_builder_button = CTkButton(self.settings_frame, text="Построитель лабиринтов", command=self.launch_maze_builder)
         self.random_click()
-        self.info_label.grid(row=3, column=1, sticky=W+N+S+N)
 
-        self.start_button = CTkButton(self.controls_menu, text="Начать игру")
+        self.start_button = CTkButton(self.controls_menu, text="Начать игру", command=self.start_game)
         self.start_button.grid(row=2, column=0, sticky=W+E+N+S)
 
     def launch_maze_builder(self):
         self.maze_builder = MazeBuilderWindow(self)
         self.maze_builder.update_widget_size()
-
-    def generate_labyrinth(self):
-        size_str = self.size_str.get()
-        error = False
-        msg = ""
-        if size_str == "":
-            error = True
-            msg = "Введите размер лабиринта"
-        elif int(size_str) > 20 or int(size_str) < 5:
-            error = True
-            msg = "Размер лабиринта должен быть не меньше 5 и не больше 20"
-        if error:
-            self.info_label.configure(text=msg)
-            return
 
     def size_validate(self, value, state):
         print(state)
@@ -412,21 +407,78 @@ class App(CTk):
 
     def open_file(self):
         filepath = filedialog.askopenfile()
-        self.filepath = filepath.name
-        print(self.filepath)
+        filepath = filepath.name
+        filehandler = open(filepath, 'rb')
+        try:
+            cells: list[list[Cell]] = pickle.load(filehandler)
+        except:
+            CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
+            return
+
+        num_rows = len(cells)
+        if num_rows <= 2:
+            CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
+            return
+        num_cols = len(cells[0])
+        if num_cols <= 2:
+            CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
+            return
+        if num_rows != num_cols:
+            CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
+            return
+
+        self.custom_grid = cells
+        self.info_label.configure(text="Прикреплено!")
 
     def random_click(self):
         self.link_file_button.grid_forget()
-        self.generate_button.grid(row=3, column=0)
+        self.info_label.grid_forget()
         self.size_entry.configure(state=NORMAL)
         self.maze_builder_button.grid_forget()
 
     def custom_click(self):
-        self.generate_button.grid_forget()
         self.link_file_button.grid(row=3, column=0)
+        self.info_label.grid(row=3, column=1)
         self.size_entry.configure(state=DISABLED)
-        self.maze_builder_button.grid(row=4, column=0)
+        self.maze_builder_button.grid(row=4, column=0, columnspan=2, sticky="nswe")
 
+    def start_game(self):
+        if self.mode_custom.get() and self.custom_grid is not None:
+            self.maze_frame.maze = Maze(custom_grid=self.custom_grid)
+        elif self.mode_custom.get() and self.custom_grid is None:
+            CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
+            return
+        elif self.size_str.get() == "":
+            CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
+            return
+        else:
+            size: int = int(self.size_str.get())
+            self.maze_frame.maze = Maze(num_rows=size, num_cols=size)
+
+        self.maze_frame.init_canvas()
+        self.maze_frame.draw_canvas()
+
+        self.return_button_show()
+        self.controls_menu.grid_forget()
+        self.init_game_menu()
+
+    def init_game_menu(self):
+        self.game_menu = CTkFrame(self)
+        self.game_menu.grid(row=1, column=0, sticky="nswe")
+        self.game_menu_title_label = CTkLabel(self.game_menu, text="Меню игры")
+        self.game_menu_title_label.grid(row=0, column=1, sticky="sw")
+        self.help_button = CTkButton(self.game_menu, text="Помощь по игре", command=self.help_popup)
+        self.help_button.grid(row=1, column=1, sticky="nwe")
+        self.game_rules_label = CTkLabel(self.game_menu, text="Правила игры:\nЛКМ - рисование пути\nПКМ - стирание пути")
+        self.game_rules_label.grid(row=2, column=1, sticky="nswe")
+        self.give_up_button = CTkButton(self.game_menu, text="Сдаться", command=self.give_up)
+        self.give_up_button.grid(row=3, column=1, sticky="swe")
+
+    def give_up(self):
+        self.maze_frame.draw_path()
+
+    def help_popup(self):
+        CTkMessagebox(icon="info", title="Ошибка валидации", message="Произошла ошибка валидации")
 
 app = App()
 app.mainloop()
