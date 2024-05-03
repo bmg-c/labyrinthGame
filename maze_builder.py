@@ -2,9 +2,16 @@ from customtkinter import *
 import pickle
 from enum import Enum
 from common import Block, BlockState, constants
-from maze import Cell, CellState, Maze
+from maze import Cell, CellState, Maze, SizeException, SolvingException, MazeValidationException, AlgorithmException, ArgumentsException
 from tkinter import filedialog, Event
 from CTkMessagebox import CTkMessagebox
+
+
+def handle_error(e: Exception):
+    exception_type = e.__class__.__name__
+    CTkMessagebox(icon="warning", title=e.name, message=e.args[0])
+    # if exception_type == SizeException.__name__:
+    #     CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
 
 
 def save_grid_to_file(grid: list[list[Cell]], filepath: str) -> None:
@@ -93,9 +100,9 @@ class MazeBuilderWindow(CTkToplevel):
         self.size_button = CTkButton(self.control_bar, text="Поставить размер", command=self.set_new_size)
         self.size_button.grid(row=0, column=1, sticky="nsw")
 
-        self.save_button = CTkButton(self.control_bar, text="Сохранить", command=self.save_to_file)
+        self.save_button = CTkButton(self.control_bar, text="Экспорт", command=self.save_to_file)
         self.save_button.grid(row=0, column=2, sticky="nse")
-        self.load_button = CTkButton(self.control_bar, text="Загрузить", command=self.load_from_file)
+        self.load_button = CTkButton(self.control_bar, text="Импорт", command=self.load_from_file)
         self.load_button.grid(row=0, column=3, sticky="nsw")
 
     def size_validate(self, value, state):
@@ -116,6 +123,16 @@ class MazeBuilderWindow(CTkToplevel):
         self.num_rows = int(size_str)
         self.maze_width = self.num_cols * 2 + 1
         self.maze_height = self.num_rows * 2 + 1
+
+        if self.num_rows < 2:
+            handle_error(SizeException("Rазмер лабиринта не может быть меньше 2"))
+            return
+        if self.num_cols < 2:
+            handle_error(SizeException("Rазмер лабиринта не может быть меньше 2"))
+            return
+        if self.num_rows != self.num_cols:
+            handle_error(SizeException("Rазмер лабиринта по ширине и длине должен быть равен"))
+            return
 
         if self.canvas is None:
             self.init_canvas()
@@ -240,8 +257,8 @@ class MazeBuilderWindow(CTkToplevel):
         cells = block_list_to_cell_list(self.canvas_blocks)
         try:
             maze = Maze(custom_grid=cells)
-        except:
-            CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
+        except Exception as e:
+            handle_error(e)
             return
         file = filedialog.asksaveasfile()
         filepath = file.name
@@ -249,25 +266,25 @@ class MazeBuilderWindow(CTkToplevel):
         pickle.dump(cells, filehandler, pickle.HIGHEST_PROTOCOL)
 
     def load_from_file(self):
-        filepath = filedialog.askopenfile()
-        filepath = filepath.name
-        filehandler = open(filepath, 'rb')
         try:
+            filepath = filedialog.askopenfile()
+            filepath = filepath.name
+            filehandler = open(filepath, 'rb')
             cells: list[list[Cell]] = pickle.load(filehandler)
         except:
-            CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
+            CTkMessagebox(icon="cancel", title="Ошибка импортирования лабиринта", message="Ошибка при чтении файла")
             return
 
         num_rows = len(cells)
-        if num_rows <= 2:
-            CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
+        if num_rows < 2:
+            handle_error(SizeException("Rазмер лабиринта не может быть меньше 2"))
             return
         num_cols = len(cells[0])
-        if num_cols <= 2:
-            CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
+        if num_cols < 2:
+            handle_error(SizeException("Rазмер лабиринта не может быть меньше 2"))
             return
         if num_rows != num_cols:
-            CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
+            handle_error(SizeException("Rазмер лабиринта по ширине и длине должен быть равен"))
             return
 
         self.size_str.set(str(num_cols))

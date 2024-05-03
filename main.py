@@ -1,12 +1,19 @@
 from CTkMessagebox import CTkMessagebox
 from customtkinter import *
 from customtkinter import CTkFrame
-from maze import Maze, Cell
+from maze import Maze, Cell, SizeException, AlgorithmException, SolvingException, ArgumentsException, MazeValidationException
 from maze_builder import MazeBuilderWindow
 from tkinter import Event
 from enum import Enum
 from common import constants, Block, BlockState
 import pickle
+
+
+def handle_error(e: Exception):
+    exception_type = e.__class__.__name__
+    CTkMessagebox(icon="warning", title=e.name, message=e.args[0])
+    # if exception_type == SizeException.__name__:
+    #     CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
 
 
 def cell_next_to(x0, y0, x1, y1):
@@ -32,6 +39,12 @@ class MazeFrame(CTkFrame):
 
         self.maze: Maze | None = None
 
+    def clear_data(self):
+        self.block_path.clear()
+        self.start_block = None
+        self.exit_block = None
+        # self.maze = None
+
     def update_widget_size(self):
         self.master.update()
         self.update()
@@ -40,6 +53,7 @@ class MazeFrame(CTkFrame):
         self.lowest_size = self.widget_width if self.widget_width < self.widget_height else self.widget_height
 
     def init_canvas(self):
+        self.clear_data()
         self.update_widget_size()
         print(f"{self.widget_width}x{self.widget_height}")
         self.maze_width = self.maze.num_cols * 2 + 1
@@ -251,17 +265,7 @@ class MazeFrame(CTkFrame):
                 return
 
             if cell_next_to(block_x, block_y, self.exit_block.x, self.exit_block.y):
-                print("End!!!")
-
-            # if not cell_next_to(block_x, block_y, last_block.x, last_block.y):
-            #     return
-            #
-            # if cell_next_to(block_x, block_y, self.exit_block.x, self.exit_block.y):
-            #     print("End!!!")
-            #
-            # self.block_path.append(clicked_block)
-            # clicked_block.state = BlockState.PATH
-            # self.canvas.itemconfig(clicked_block.rectangle, fill=constants["PATH_COLOR"])
+                CTkMessagebox(icon="check", title="Победа", message="Вы успешно прошли лабиринт!")
 
     def right_click_motion_event(self, event: Event):
         if self.canvas is None:
@@ -412,19 +416,19 @@ class App(CTk):
         try:
             cells: list[list[Cell]] = pickle.load(filehandler)
         except:
-            CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
+            CTkMessagebox(icon="cancel", title="Ошибка импортирования лабиринта", message="Ошибка при чтении файла")
             return
 
         num_rows = len(cells)
-        if num_rows <= 2:
-            CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
+        if num_rows < 2:
+            handle_error(SizeException("Rазмер лабиринта не может быть меньше 2"))
             return
         num_cols = len(cells[0])
-        if num_cols <= 2:
-            CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
+        if num_cols < 2:
+            handle_error(SizeException("Rазмер лабиринта не может быть меньше 2"))
             return
         if num_rows != num_cols:
-            CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
+            handle_error(SizeException("Rазмер лабиринта по ширине и длине должен быть равен"))
             return
 
         self.custom_grid = cells
@@ -444,16 +448,24 @@ class App(CTk):
 
     def start_game(self):
         if self.mode_custom.get() and self.custom_grid is not None:
-            self.maze_frame.maze = Maze(custom_grid=self.custom_grid)
+            try:
+                self.maze_frame.maze = Maze(custom_grid=self.custom_grid)
+            except Exception as e:
+                handle_error(e)
+                return
         elif self.mode_custom.get() and self.custom_grid is None:
-            CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
+            CTkMessagebox(icon="info", title="Прикрепление лабиринта", message="Вам необходимо прикрепить файл с лабиринтом. Его можно создать используя \"Построитель лабирнитов\"")
             return
         elif self.size_str.get() == "":
-            CTkMessagebox(icon="warning", title="Ошибка валидации", message="Произошла ошибка валидации")
+            CTkMessagebox(icon="info", title="Введите размер", message="Для генерации лабиринта Вы должны вписать нужный размер")
             return
         else:
-            size: int = int(self.size_str.get())
-            self.maze_frame.maze = Maze(num_rows=size, num_cols=size)
+            try:
+                size: int = int(self.size_str.get())
+                self.maze_frame.maze = Maze(num_rows=size, num_cols=size)
+            except Exception as e:
+                handle_error(e)
+                return
 
         self.maze_frame.init_canvas()
         self.maze_frame.draw_canvas()
@@ -476,9 +488,11 @@ class App(CTk):
 
     def give_up(self):
         self.maze_frame.draw_path()
+        CTkMessagebox(icon="info", title="Вы сдались", message="Теперь на экране покажется верный путь")
 
     def help_popup(self):
-        CTkMessagebox(icon="info", title="Ошибка валидации", message="Произошла ошибка валидации")
+        CTkMessagebox(icon="info", title="Помощь по игре", message="В этой игре Вам необходимо пройти лабиринт, рисуя путь от начальной синей клетки до конечной используя левую кнопку мыши для рисования пути и правой кнопки мыши для стирания пути.")
+
 
 app = App()
 app.mainloop()

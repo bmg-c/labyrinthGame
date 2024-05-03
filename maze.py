@@ -74,22 +74,27 @@ SOLVING_ALGORITHMS = ["recursive_backtracking"]
 
 
 class SizeException(Exception):
+    name = "Ошибка валидации размера"
     pass
 
 
 class MazeValidationException(Exception):
+    name = "Ошибка валидации начальных данных лабиринта"
     pass
 
 
 class AlgorithmException(Exception):
+    name = "Ошибка валидации алгоритма"
     pass
 
 
 class SolvingException(Exception):
+    name = "Ошибка при решении лабиринта"
     pass
 
 
 class ArgumentsException(Exception):
+    name = "Ошибка валидации аргументов функции"
     pass
 
 
@@ -97,23 +102,23 @@ def check_input_data(num_rows: int, num_cols: int, gen_algorithm: str, solving_a
     if custom_grid is not None:
         num_rows = len(custom_grid)
         if num_rows == 0:
-            raise SizeException("Size of the maze can't lower than 2")
+            raise SizeException("Размер лабиринта не может быть меньше 2")
         num_cols = len(custom_grid[0])
 
         for y in range(num_rows):
             for x in range(num_cols):
                 if (x, y) != (custom_grid[y][x].x, custom_grid[y][x].y):
-                    raise MazeValidationException("Coordinates of cells are not representative of their placement")
+                    raise MazeValidationException("Координаты клеток внутри самих клеток не сходятся с их расположением в лабиринте")
 
         gen_algorithm = "custom"
     if num_rows < 2 or num_cols < 2:
-        raise SizeException("Size of the maze can't lower than 2")
+        raise SizeException("Размер лабиринта не может быть меньше 2")
     if num_rows > 30 or num_cols > 30:
-        raise SizeException("Size of the maze can't higher than 30")
+        raise SizeException("Размер лабиринта не может быть больше 30")
     if gen_algorithm not in GEN_ALGORITHMS:
-        raise AlgorithmException("No such generation algorithm")
+        raise AlgorithmException("Такого алгоритма генерации лабиринта не существует")
     if solving_algorithm not in SOLVING_ALGORITHMS:
-        raise AlgorithmException("No such solving algorithm")
+        raise AlgorithmException("Такого алгоритма нахождения пути в лабиринте не существует")
     return None
 
 
@@ -152,7 +157,7 @@ class Maze:
             self.path: list[Cell] = []
             self.solve(solving_algorithm)
             if not self.is_solvable or len(self.path) == 0:
-                raise SolvingException("The maze is not solvable. It does not have a path from start to end")
+                raise SolvingException("Лабиринт не имеет решения. Лабиринт должен иметь путь от начала до конца")
         elif custom_grid is not None:
             self.num_rows: int = len(custom_grid)
             self.num_cols: int = len(custom_grid[0])
@@ -166,9 +171,9 @@ class Maze:
             self.path: list[Cell] = []
             self.solve(solving_algorithm)
             if not self.is_solvable or len(self.path) == 0:
-                raise SolvingException("The maze is not solvable. It does not have a path from start to end")
+                raise SolvingException("Лабиринт не имеет решения. Лабиринт должен иметь путь от начала до конца")
         else:
-            raise ArgumentsException("Not enough arguments provided")
+            raise ArgumentsException("Приведено недостаточно аргументов")
 
     def generate_grid(self) -> list[list[Cell]]:
         grid: list[list[Cell]] = []
@@ -247,7 +252,7 @@ class Maze:
             self.is_solvable = answer[0]
             self.path = answer[1]
         else:
-            print("No such solving algorithm")
+            raise AlgorithmException("Такого алгоритма нахождения пути в лабиринте не существует")
 
     def _solve_recursive_backtracking(self) -> (bool, list[Cell]):
         self.clear_visited()
