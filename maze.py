@@ -36,9 +36,9 @@ class Cell:
             directions.append("E")
         return directions
 
-    def direction_to(self, nc) -> str:
-        if cell_next_to(self.x, self.y, nc.x, nc.y):
-            return "None"
+    def direction_to(self, nc) -> str | None:
+        if not cell_next_to(self.x, self.y, nc.x, nc.y):
+            return None
         diff_x = self.x - nc.x
         diff_y = self.y - nc.y
 
@@ -48,12 +48,12 @@ class Cell:
             elif diff_y == -1:
                 return "S"
             else:
-                return "Same"
+                return None
         elif diff_x == -1:
             return "E"
         elif diff_x == 1:
             return "W"
-        return "Error"
+        return None
 
     def __str__(self):
         return f"{self.state}({self.x}, {self.y})"
@@ -127,6 +127,7 @@ def get_start_cell(grid: list[list[Cell]]) -> Cell:
         for x in range(len(grid[y])):
             if grid[y][x].state == CellState.START:
                 return grid[y][x]
+    grid[0][0].state = CellState.START
     return grid[0][0]
 
 
@@ -135,6 +136,7 @@ def get_exit_cell(grid: list[list[Cell]]) -> Cell:
         for x in range(len(grid[y])):
             if grid[y][x].state == CellState.EXIT:
                 return grid[y][x]
+    grid[-1][-1].state = CellState.EXIT
     return grid[-1][-1]
 
 
