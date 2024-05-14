@@ -1,22 +1,24 @@
 import unittest
-from maze import Maze, SizeException, SolvingException, MazeValidationException, AlgorithmException, ArgumentsException, Cell, CellState, cell_next_to
+from app.maze import Maze, Cell, CellState
 
 
 class TestCellLogic(unittest.TestCase):
     def test_cell_next_to(self):
+        test_cell: Cell = Cell(CellState.EMPTY, 0, 0)
+
         cell1 = Cell(CellState.EMPTY, 0, 0)
         cell2 = Cell(CellState.EMPTY, 0, 1)
         cell3 = Cell(CellState.EMPTY, 1, 0)
         cell4 = Cell(CellState.EMPTY, 1, 1)
 
-        self.assertTrue(cell_next_to(cell1.x, cell1.y, cell2.x, cell2.y))
-        self.assertTrue(cell_next_to(cell1.x, cell1.y, cell3.x, cell3.y))
-        self.assertFalse(cell_next_to(cell1.x, cell1.y, cell4.x, cell4.y))
+        self.assertTrue(test_cell.cell_next_to(cell1.x, cell1.y, cell2.x, cell2.y))
+        self.assertTrue(test_cell.cell_next_to(cell1.x, cell1.y, cell3.x, cell3.y))
+        self.assertFalse(test_cell.cell_next_to(cell1.x, cell1.y, cell4.x, cell4.y))
 
-        self.assertFalse(cell_next_to(cell2.x, cell2.y, cell3.x, cell3.y))
-        self.assertTrue(cell_next_to(cell2.x, cell2.y, cell4.x, cell4.y))
+        self.assertFalse(test_cell.cell_next_to(cell2.x, cell2.y, cell3.x, cell3.y))
+        self.assertTrue(test_cell.cell_next_to(cell2.x, cell2.y, cell4.x, cell4.y))
 
-        self.assertTrue(cell_next_to(cell3.x, cell3.y, cell4.x, cell4.y))
+        self.assertTrue(test_cell.cell_next_to(cell3.x, cell3.y, cell4.x, cell4.y))
 
     def test_direction_to(self):
         cell1 = Cell(CellState.EMPTY, 0, 0)
@@ -78,19 +80,20 @@ class TestMazeRandom(unittest.TestCase):
         self.assertEqual(self.maze.exit_cell, exit_cells[0])
 
     def test_solved_path(self):
+        test_cell: Cell = Cell(CellState.EMPTY, 0, 0)
         # Size of path can't be less than initial maze size
         self.assertGreaterEqual(len(self.maze.path), self.init_size)
         # First element should be next to start cell and not a behind wall
-        self.assertTrue(cell_next_to(self.maze.start_cell.x, self.maze.start_cell.y, self.maze.path[0].x, self.maze.path[0].y))
+        self.assertTrue(test_cell.cell_next_to(self.maze.start_cell.x, self.maze.start_cell.y, self.maze.path[0].x, self.maze.path[0].y))
         self.assertIsNotNone(self.maze.start_cell.direction_to(self.maze.path[0]))
         # Last element should be next to exit cell and not behind wall
-        self.assertTrue(cell_next_to(self.maze.exit_cell.x, self.maze.exit_cell.y, self.maze.path[-1].x, self.maze.path[-1].y))
+        self.assertTrue(test_cell.cell_next_to(self.maze.exit_cell.x, self.maze.exit_cell.y, self.maze.path[-1].x, self.maze.path[-1].y))
         self.assertIsNotNone(self.maze.exit_cell.direction_to(self.maze.path[-1]))
         for i in range(0, len(self.maze.path) - 1):
             # Elements should not repeat in path
             self.assertTrue(self.maze.path[i] not in self.maze.path[0:i])
             # Elements should be next to each other and not behind wall
-            self.assertTrue(cell_next_to(self.maze.path[i].x, self.maze.path[i].y, self.maze.path[i+1].x, self.maze.path[i+1].y))
+            self.assertTrue(test_cell.cell_next_to(self.maze.path[i].x, self.maze.path[i].y, self.maze.path[i+1].x, self.maze.path[i+1].y))
             self.assertIsNotNone(self.maze.path[i].direction_to(self.maze.path[i+1]))
 
 

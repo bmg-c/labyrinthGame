@@ -1,0 +1,155 @@
+@startuml classes
+set namespaceSeparator none
+class "<color:red>AlgorithmException</color>" as app.maze.AlgorithmException {
+  name : str
+}
+class "App" as app.main.App {
+  controls_menu : CTkFrame
+  custom_grid : list[list[Cell]] | None
+  filepath : str
+  game_menu : CTkFrame
+  info_label : CTkLabel
+  link_file_button : CTkButton
+  maze_builder
+  maze_builder_button : CTkButton
+  maze_frame
+  mode_custom : BooleanVar
+  return_button : CTkButton
+  size_entry : CTkEntry
+  size_str : StringVar
+  size_text : CTkLabel
+  start_button : CTkButton
+  upper_panel : CTkFrame
+  custom_click() -> None
+  give_up() -> None
+  go_back() -> None
+  handle_error(e: SizeException | AlgorithmException | SolvingException | ArgumentsException | MazeValidationException) -> None
+  help_popup() -> None
+  init_controls_menu() -> None
+  init_game_menu() -> None
+  init_upper_panel() -> None
+  launch_maze_builder() -> None
+  open_about_dev() -> None
+  open_about_program() -> None
+  open_file() -> None
+  random_click() -> None
+  return_button_hide() -> None
+  return_button_show() -> None
+  size_validate(value: str) -> bool
+  start_game() -> None
+}
+class "<color:red>ArgumentsException</color>" as app.maze.ArgumentsException {
+  name : str
+}
+class "Block" as app.common.Block {
+  rectangle : int
+  state
+  x : int
+  y : int
+}
+class "BlockState" as app.common.BlockState {
+  name
+  to_color() -> str
+}
+class "Cell" as app.maze.Cell {
+  state
+  visited : bool
+  walls : dict[str, bool]
+  x : int
+  y : int
+  cell_next_to(x0, y0, x1, y1) -> bool
+  direction_to(nc: Self) -> str | None
+  get_available_directions() -> list[str]
+}
+class "CellState" as app.maze.CellState {
+  name
+}
+class "Maze" as app.maze.Maze {
+  exit_cell
+  grid : list[list[Cell]]
+  is_solvable : bool
+  num_cols : int
+  num_rows : int
+  path : list[Cell]
+  start_cell
+  check_input_data(num_rows: int, num_cols: int, gen_algorithm: str, solving_algorithm: str, custom_grid: list[list[Cell]] | None) -> None
+  clear_visited() -> None
+  generate_grid() -> list[list[Cell]]
+  generate_maze(algorithm: str) -> None
+  get_cell_available_directions(cc: Cell) -> list[str]
+  get_exit_cell() -> Cell
+  get_start_cell() -> Cell
+  solve(algorithm: str) -> None
+}
+class "MazeBuilderWindow" as app.maze_builder.MazeBuilderWindow {
+  block_height : int
+  block_width : int
+  canvas : CTkCanvas
+  canvas_blocks : list[list[Block]]
+  control_bar : CTkFrame
+  filepath : str
+  lowest_size : int
+  maze_height : int
+  maze_width : int
+  size_str : StringVar
+  upper_panel : CTkFrame
+  canvas_blocks_to_cell_matrix() -> list[list[Cell]]
+  handle_error(e: SizeException | AlgorithmException | SolvingException | ArgumentsException | MazeValidationException) -> None
+  init_canvas() -> None
+  init_control_bar() -> None
+  init_upper_panel() -> None
+  is_block_changeable(block: Block) -> (bool, BlockState)
+  left_click_event(event: Event) -> None
+  load_from_file() -> None
+  reset_canvas_blocks() -> None
+  right_click_event(event: Event) -> None
+  save_to_file() -> None
+  set_new_size() -> None
+  size_validate(value: str) -> bool
+  update_widget_size() -> None
+}
+class "MazeFrame" as app.main.MazeFrame {
+  block_height : int
+  block_path : list[Block]
+  block_width : int
+  canvas : CTkCanvas | None
+  canvas_blocks : list[list[Block]]
+  canvas_height : int
+  canvas_width : int
+  exit_block : Block | None
+  lowest_size : int
+  master : CTk | CTkFrame
+  maze : Maze | None
+  maze_height : int
+  maze_width : int
+  start_block : Block | None
+  widget_height : int
+  widget_width : int
+  clear_data() -> None
+  draw_canvas() -> None
+  draw_path() -> None
+  init_canvas() -> None
+  is_straight_to(block1: Block, block2: Block) -> bool
+  left_click_event(event: Event) -> None
+  reset_canvas_blocks() -> None
+  right_click_event(event: Event) -> None
+  update_widget_size() -> None
+}
+class "<color:red>MazeValidationException</color>" as app.maze.MazeValidationException {
+  name : str
+}
+class "<color:red>SizeException</color>" as app.maze.SizeException {
+  name : str
+}
+class "<color:red>SolvingException</color>" as app.maze.SolvingException {
+  name : str
+}
+app.main.MazeFrame --* app.main.App : maze_frame
+app.maze.Cell --* app.maze.Maze : start_cell
+app.maze.Cell --* app.maze.Maze : exit_cell
+app.maze.Maze --* app.main.MazeFrame : maze
+app.maze.Maze --* app.main.MazeFrame : maze
+app.maze_builder.MazeBuilderWindow --* app.main.App : maze_builder
+app.common.BlockState --o app.common.Block : state
+app.maze.CellState --o app.maze.Cell : state
+@enduml

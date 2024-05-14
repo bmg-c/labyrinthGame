@@ -18,16 +18,17 @@ class BlockState(Enum):
     START = 3
     EXIT = 4
 
-    def to_color(self):
+    def to_color(self) -> str:
         return blockState_to_color[self.value]
 
 
 class Block:
-    def __init__(self, x, y, state: BlockState):
-        self.x = x
-        self.y = y
-        self.state = state
-        self.rectangle = None
+    rectangle: int
+
+    def __init__(self, x: int, y: int, state: BlockState):
+        self.x: int = x
+        self.y: int = y
+        self.state: BlockState = state
 
     def __str__(self):
         return f"{self.state}({self.x}, {self.y})"

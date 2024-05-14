@@ -1,0 +1,19 @@
+@startuml packages
+set namespaceSeparator none
+package "app" as app {
+}
+package "app.common" as app.common {
+}
+package "app.main" as app.main {
+}
+package "app.maze" as app.maze {
+}
+package "app.maze_builder" as app.maze_builder {
+}
+app --> app.main
+app.main --> app.common
+app.main --> app.maze
+app.main --> app.maze_builder
+app.maze_builder --> app.common
+app.maze_builder --> app.maze
+@enduml

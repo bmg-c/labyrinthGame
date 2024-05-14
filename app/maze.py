@@ -1,13 +1,7 @@
 from enum import Enum
 from random import shuffle
+from typing import Self
 
-def cell_next_to(x0, y0, x1, y1):
-    diff_x = abs(x0 - x1)
-    diff_y = abs(y0 - y1)
-
-    if diff_x + diff_y >= 2 or diff_x + diff_y == 0:
-        return False
-    return True
 
 class CellState(Enum):
     EMPTY = 1
@@ -18,11 +12,11 @@ class CellState(Enum):
 
 class Cell:
     def __init__(self, state: CellState, x: int, y: int):
-        self.state = state
-        self.x = x
-        self.y = y
-        self.visited = False
-        self.walls = {"N": True, "S": True, "W": True, "E": True}
+        self.state: CellState = state
+        self.x: int = x
+        self.y: int = y
+        self.visited: bool = False
+        self.walls: dict[str, bool] = {"N": True, "S": True, "W": True, "E": True}
 
     def get_available_directions(self) -> list[str]:
         directions: list[str] = []
@@ -36,8 +30,16 @@ class Cell:
             directions.append("E")
         return directions
 
-    def direction_to(self, nc) -> str | None:
-        if not cell_next_to(self.x, self.y, nc.x, nc.y):
+    def cell_next_to(self, x0, y0, x1, y1) -> bool:
+        diff_x = abs(x0 - x1)
+        diff_y = abs(y0 - y1)
+
+        if diff_x + diff_y >= 2 or diff_x + diff_y == 0:
+            return False
+        return True
+
+    def direction_to(self, nc: Self) -> str | None:
+        if not self.cell_next_to(self.x, self.y, nc.x, nc.y):
             return None
         diff_x = self.x - nc.x
         diff_y = self.y - nc.y
@@ -70,92 +72,52 @@ add_y = {"N": -1, "S": 1, "W": 0, "E": 0}
 opposite = {"N": "S", "S": "N", "W": "E", "E": "W"}
 
 GEN_ALGORITHMS = ["recursive_backtracking", "custom"]
-SOLVING_ALGORITHMS = ["recursive_backtracking"]
+SOLVING_ALGORITHMS = ["backtracking"]
 
 
 class SizeException(Exception):
-    name = "Ошибка валидации размера"
+    name: str = "Ошибка валидации размера"
     pass
 
 
 class MazeValidationException(Exception):
-    name = "Ошибка валидации начальных данных лабиринта"
+    name: str = "Ошибка валидации начальных данных лабиринта"
     pass
 
 
 class AlgorithmException(Exception):
-    name = "Ошибка валидации алгоритма"
+    name: str = "Ошибка валидации алгоритма"
     pass
 
 
 class SolvingException(Exception):
-    name = "Ошибка при решении лабиринта"
+    name: str = "Ошибка при решении лабиринта"
     pass
 
 
 class ArgumentsException(Exception):
-    name = "Ошибка валидации аргументов функции"
+    name: str = "Ошибка валидации аргументов функции"
     pass
 
 
-def check_input_data(num_rows: int, num_cols: int, gen_algorithm: str, solving_algorithm: str, custom_grid: list[list[Cell]] | None) -> None:
-    if custom_grid is not None:
-        num_rows = len(custom_grid)
-        if num_rows == 0:
-            raise SizeException("Размер лабиринта не может быть меньше 2")
-        num_cols = len(custom_grid[0])
-
-        for y in range(num_rows):
-            for x in range(num_cols):
-                if (x, y) != (custom_grid[y][x].x, custom_grid[y][x].y):
-                    raise MazeValidationException("Координаты клеток внутри самих клеток не сходятся с их расположением в лабиринте")
-
-        gen_algorithm = "custom"
-    if num_rows < 2 or num_cols < 2:
-        raise SizeException("Размер лабиринта не может быть меньше 2")
-    if num_rows > 30 or num_cols > 30:
-        raise SizeException("Размер лабиринта не может быть больше 30")
-    if gen_algorithm not in GEN_ALGORITHMS:
-        raise AlgorithmException("Такого алгоритма генерации лабиринта не существует")
-    if solving_algorithm not in SOLVING_ALGORITHMS:
-        raise AlgorithmException("Такого алгоритма нахождения пути в лабиринте не существует")
-    return None
-
-
-def get_start_cell(grid: list[list[Cell]]) -> Cell:
-    for y in range(len(grid)):
-        for x in range(len(grid[y])):
-            if grid[y][x].state == CellState.START:
-                return grid[y][x]
-    grid[0][0].state = CellState.START
-    return grid[0][0]
-
-
-def get_exit_cell(grid: list[list[Cell]]) -> Cell:
-    for y in range(len(grid)):
-        for x in range(len(grid[y])):
-            if grid[y][x].state == CellState.EXIT:
-                return grid[y][x]
-    grid[-1][-1].state = CellState.EXIT
-    return grid[-1][-1]
-
-
 class Maze:
-    def __init__(self, num_rows: int = 0, num_cols: int = 0, gen_algorithm: str = "recursive_backtracking", solving_algorithm: str = "recursive_backtracking",
+    is_solvable: bool
+    start_cell: Cell
+    exit_cell: Cell
+
+    def __init__(self, num_rows: int = 0, num_cols: int = 0, gen_algorithm: str = "recursive_backtracking", solving_algorithm: str = "backtracking",
                  custom_grid: list[list[Cell]] | None = None):
-        check_input_data(num_rows, num_cols, gen_algorithm, solving_algorithm, custom_grid)
+        self.check_input_data(num_rows, num_cols, gen_algorithm, solving_algorithm, custom_grid)
 
         if custom_grid is None:
             self.num_rows: int = num_rows
             self.num_cols: int = num_cols
-            self.grid_size: int = num_rows * num_cols
 
             self.grid: list[list[Cell]] = self.generate_grid()
             self.generate_maze(gen_algorithm)
-            self.start_cell: Cell = get_start_cell(self.grid)
-            self.exit_cell: Cell = get_exit_cell(self.grid)
+            self.start_cell: Cell = self.get_start_cell()
+            self.exit_cell: Cell = self.get_exit_cell()
 
-            self.is_solvable: bool = False
             self.path: list[Cell] = []
             self.solve(solving_algorithm)
             if not self.is_solvable or len(self.path) == 0:
@@ -163,19 +125,60 @@ class Maze:
         elif custom_grid is not None:
             self.num_rows: int = len(custom_grid)
             self.num_cols: int = len(custom_grid[0])
-            self.grid_size: int = num_rows * num_cols
 
             self.grid: list[list[Cell]] = custom_grid.copy()
-            self.start_cell: Cell = get_start_cell(self.grid)
-            self.exit_cell: Cell = get_exit_cell(self.grid)
+            self.start_cell: Cell = self.get_start_cell()
+            self.exit_cell: Cell = self.get_exit_cell()
 
-            self.is_solvable: bool = False
             self.path: list[Cell] = []
             self.solve(solving_algorithm)
             if not self.is_solvable or len(self.path) == 0:
                 raise SolvingException("Лабиринт не имеет решения. Лабиринт должен иметь путь от начала до конца")
         else:
             raise ArgumentsException("Приведено недостаточно аргументов")
+
+    def check_input_data(self, num_rows: int, num_cols: int, gen_algorithm: str, solving_algorithm: str,
+                         custom_grid: list[list[Cell]] | None) -> None:
+        if custom_grid is not None:
+            num_rows = len(custom_grid)
+            if num_rows == 0:
+                raise SizeException("Размер лабиринта не может быть меньше 2")
+            num_cols = len(custom_grid[0])
+
+            for y in range(num_rows):
+                for x in range(num_cols):
+                    if (x, y) != (custom_grid[y][x].x, custom_grid[y][x].y):
+                        raise MazeValidationException(
+                            "Координаты клеток внутри самих клеток не сходятся с их расположением в лабиринте")
+
+            gen_algorithm = "custom"
+        if num_rows < 2 or num_cols < 2:
+            raise SizeException("Размер лабиринта не может быть меньше 2")
+        if num_rows > 30 or num_cols > 30:
+            raise SizeException("Размер лабиринта не может быть больше 30")
+        if gen_algorithm not in GEN_ALGORITHMS:
+            raise AlgorithmException("Такого алгоритма генерации лабиринта не существует")
+        if solving_algorithm not in SOLVING_ALGORITHMS:
+            raise AlgorithmException("Такого алгоритма нахождения пути в лабиринте не существует")
+        return None
+
+    def get_start_cell(self) -> Cell:
+        grid = self.grid
+        for y in range(len(grid)):
+            for x in range(len(grid[y])):
+                if grid[y][x].state == CellState.START:
+                    return grid[y][x]
+        grid[0][0].state = CellState.START
+        return grid[0][0]
+
+    def get_exit_cell(self) -> Cell:
+        grid = self.grid
+        for y in range(len(grid)):
+            for x in range(len(grid[y])):
+                if grid[y][x].state == CellState.EXIT:
+                    return grid[y][x]
+        grid[-1][-1].state = CellState.EXIT
+        return grid[-1][-1]
 
     def generate_grid(self) -> list[list[Cell]]:
         grid: list[list[Cell]] = []
@@ -187,12 +190,12 @@ class Maze:
 
         return grid
 
-    def clear_visited(self):
+    def clear_visited(self) -> None:
         for y in range(self.num_rows):
             for x in range(self.num_cols):
                 self.grid[y][x].visited = False
 
-    def get_cell_available_directions(self, cc):
+    def get_cell_available_directions(self, cc: Cell) -> list[str]:
         wall_directions = cc.get_available_directions()
         directions = []
 
@@ -202,11 +205,11 @@ class Maze:
 
         return directions
 
-    def generate_maze(self, algorithm) -> None:
+    def generate_maze(self, algorithm: str) -> None:
         if algorithm == "recursive_backtracking":
             self._recursive_backtracking_method(0, 0, self.grid)
 
-    def _recursive_backtracking_method(self, cx, cy, grid):
+    def _recursive_backtracking_method(self, cx: int, cy: int, grid: list[list[Cell]]) -> None:
         grid[cy][cx].visited = True
 
         directions: list[str] = ["N", "S", "W", "E"]
@@ -222,41 +225,15 @@ class Maze:
 
                 self._recursive_backtracking_method(nx, ny, grid)
 
-    def print_maze(self):
-        char_grid = []
-        for x in range(self.num_rows * 2 + 1):
-            char_grid.append([])
-            for y in range(self.num_cols * 2 + 1):
-                char_grid[x].append('⬛')
-
-        for y in range(len(char_grid)):
-            for x in range(len(char_grid[0])):
-                if x % 2 == 1 and y % 2 == 1:
-                    char_grid[y][x] = '⬜'
-                    cellx, celly = int((x - 1) / 2), int((y - 1) / 2)  # 0,0-1,1  0,1-1,3  0,2-1,5
-                    if not self.grid[celly][cellx].walls["N"]:
-                        char_grid[y - 1][x] = '⬜'
-                    if not self.grid[celly][cellx].walls["S"]:
-                        char_grid[y + 1][x] = '⬜'
-                    if not self.grid[celly][cellx].walls["W"]:
-                        char_grid[y][x - 1] = '⬜'
-                    if not self.grid[celly][cellx].walls["E"]:
-                        char_grid[y][x + 1] = '⬜'
-
-        for x in range(len(char_grid)):
-            for y in range(len(char_grid[0])):
-                print(char_grid[x][y], end='')
-            print()
-
-    def solve(self, algorithm: str):
-        if algorithm == "recursive_backtracking":
-            answer = self._solve_recursive_backtracking()
+    def solve(self, algorithm: str) -> None:
+        if algorithm == "backtracking":
+            answer = self._solve_backtracking()
             self.is_solvable = answer[0]
             self.path = answer[1]
         else:
             raise AlgorithmException("Такого алгоритма нахождения пути в лабиринте не существует")
 
-    def _solve_recursive_backtracking(self) -> (bool, list[Cell]):
+    def _solve_backtracking(self) -> (bool, list[Cell]):
         self.clear_visited()
         cx, cy = self.start_cell.x, self.start_cell.y
         stack: list[Cell] = [self.grid[cy][cx]]
@@ -283,9 +260,3 @@ class Maze:
             cx, cy = nc.x, nc.y
 
         return False, []
-
-
-new_maze = Maze(5, 5)
-# new_maze.print_maze()
-# print("Is solvable? " + str(new_maze.is_solvable))
-# print("Path: " + str(new_maze.path))
