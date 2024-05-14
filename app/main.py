@@ -8,24 +8,24 @@ from tkinter import Event
 from .common import constants, Block, BlockState
 import pickle
 
-SETTINGS_FRAME_PADY: int = 10
-SETTINGS_FRAME_PADX: int = 20
-START_BUTTON_PADY: int = 10
+SETTINGS_FRAME_PADY: int = 5
+SETTINGS_FRAME_PADX: int = 10
+START_BUTTON_PADY: int = 5
 START_BUTTON_PADX: int = 10
 SETTING_TITLE_PADY: int = 0
-SETTING_TITLE_PADX: int = 20
+SETTING_TITLE_PADX: int = 10
 
-MODE_RADIO_PADY: int = 20
-MODE_RADIO_PADX: int = 10
-SIZE_PADY: int = 10
-SIZE_PADX: int = 10
+MODE_RADIO_PADY: int = 5
+MODE_RADIO_PADX: int = 00
+SIZE_PADY: int = 00
+SIZE_PADX: int = 00
 LINK_FILE_PADY: int = 0
-LINK_FILE_PADX: int = 10
-MAZE_BUILDER_PADY: int = 10
-MAZE_BUILDER_PADX: int = 10
+LINK_FILE_PADX: int = 00
+MAZE_BUILDER_PADY: int = 5
+MAZE_BUILDER_PADX: int = 00
 
-ABOUT_PADY: int = 750
-ABOUT_PADX: int = 20
+ABOUT_PADY: int = 30
+ABOUT_PADX: int = 10
 
 
 class MazeFrame(CTkFrame):
@@ -57,7 +57,7 @@ class MazeFrame(CTkFrame):
         self.master.update()
         self.update()
         self.widget_width = self.winfo_width()
-        self.widget_height = self.winfo_height()
+        self.widget_height = self.winfo_height() - self.master.upper_panel.winfo_height()
         self.lowest_size = self.widget_width if self.widget_width < self.widget_height else self.widget_height
 
     def init_canvas(self) -> None:
@@ -333,10 +333,14 @@ class App(CTk):
         self.grid_columnconfigure(1, weight=1, uniform="group1")
         self.grid_columnconfigure(2, weight=1, uniform="group1")
 
+        self.grid_columnconfigure(0, weight=1, uniform="group4")
+        self.grid_columnconfigure(1, weight=1, uniform="group4")
+        self.grid_columnconfigure(2, weight=1, uniform="group4")
+
         self.init_upper_panel()
         self.init_controls_menu()
         self.maze_frame = MazeFrame(self)
-        self.maze_frame.grid(column=1, row=1, columnspan=2, sticky="news")
+        self.maze_frame.grid(column=1, row=1, columnspan=2, rowspan=2, sticky="news")
 
     def init_upper_panel(self) -> None:
         self.upper_panel = CTkFrame(self)
@@ -408,20 +412,23 @@ class App(CTk):
         self.start_button.grid(row=2, column=0, sticky=W + E + N + S)
         self.start_button.grid_configure(pady=START_BUTTON_PADY, padx=START_BUTTON_PADX)
 
-        about_frame = CTkFrame(self.controls_menu)
-        about_frame.grid(row=3, column=0, sticky=W + E + S)
+        about_all_frame = CTkFrame(self)
+        about_all_frame.grid(row=2, column=0, sticky=W+N+E+S)
+
+        about_frame = CTkFrame(about_all_frame)
+        about_frame.grid(row=0, column=0, sticky=W+E+S)
         about_frame.grid_configure(pady=ABOUT_PADY, padx=ABOUT_PADX)
 
         about_label = CTkLabel(about_frame, text="О программе")
         about_label.grid(row=0, column=0, columnspan=2, sticky=W)
-        about_label.grid_configure(pady=SETTING_TITLE_PADY, padx=SETTING_TITLE_PADX)
+        about_label.grid_configure(pady=5, padx=5)
 
         about_program_button = CTkButton(about_frame, text="Справка", command=self.open_about_program)
         about_program_button.grid(row=1, column=0, sticky=W)
         about_program_button.grid_configure(pady=LINK_FILE_PADY, padx=LINK_FILE_PADX)
         about_dev_button = CTkButton(about_frame, text="О разработчике", command=self.open_about_dev)
         about_dev_button.grid(row=1, column=1, sticky=E)
-        about_dev_button.grid_configure(pady=LINK_FILE_PADY, padx=LINK_FILE_PADX)
+        about_dev_button.grid_configure(pady=5, padx=5)
 
     def open_about_program(self) -> None:
         CTkMessagebox(title="Справка", width=800,
