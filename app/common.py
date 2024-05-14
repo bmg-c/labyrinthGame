@@ -1,11 +1,11 @@
 from enum import Enum
 
 constants = {
-    "START_COLOR": "blue",
-    "EXIT_COLOR": "blue",
-    "WALL_COLOR": "black",
-    "PATH_COLOR": "green",
-    "EMPTY_COLOR": "#ddd",
+    "START_COLOR": "#1F6AA5",
+    "EXIT_COLOR": "#1F6AA5",
+    "WALL_COLOR": "#171717",
+    "PATH_COLOR": "#64AB00",
+    "EMPTY_COLOR": "#DCE4EE",
 }
 
 blockState_to_color = ["WALL_COLOR", "EMPTY_COLOR", "PATH_COLOR", "START_COLOR", "EXIT_COLOR"]

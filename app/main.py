@@ -135,12 +135,6 @@ class MazeFrame(CTkFrame):
     def draw_canvas(self) -> None:
         for y in range(0, self.maze_height):
             for x in range(0, self.maze_width):
-                args = [
-                    x * self.block_width,
-                    y * self.block_height,
-                    (x + 1) * self.block_width,
-                    (y + 1) * self.block_height,
-                ]
                 kwargs = {}
                 match self.canvas_blocks[y][x].state:
                     case BlockState.WALL:
@@ -157,7 +151,36 @@ class MazeFrame(CTkFrame):
                     case _:
                         print("Error defining color!")
 
-                self.canvas_blocks[y][x].rectangle = self.canvas.create_rectangle(*args, **kwargs)
+                x1: int = x * self.block_width
+                y1: int = y * self.block_height
+                x2: int = (x + 1) * self.block_width
+                y2: int = (y + 1) * self.block_height
+
+                # radius: int = 2
+                # points = [x1 + radius, y1,
+                #           x1 + radius, y1,
+                #           x2 - radius, y1,
+                #           x2 - radius, y1,
+                #           x2, y1,
+                #           x2, y1 + radius,
+                #           x2, y1 + radius,
+                #           x2, y2 - radius,
+                #           x2, y2 - radius,
+                #           x2, y2,
+                #           x2 - radius, y2,
+                #           x2 - radius, y2,
+                #           x1 + radius, y2,
+                #           x1 + radius, y2,
+                #           x1, y2,
+                #           x1, y2 - radius,
+                #           x1, y2 - radius,
+                #           x1, y1 + radius,
+                #           x1, y1 + radius,
+                #           x1, y1]
+                # self.canvas_blocks[y][x].rectangle = self.canvas.create_polygon(*points, **kwargs, smooth=True)
+
+                points = [x1, y1, x2, y2]
+                self.canvas_blocks[y][x].rectangle = self.canvas.create_rectangle(*points, **kwargs)
 
     def draw_path(self) -> None:
         self.block_path = []
@@ -353,7 +376,7 @@ class App(CTk):
         self.return_button_hide()
         title_label = CTkLabel(self.upper_panel, text="Лабиринт")
         title_label.grid(row=0, column=1, sticky="n")
-        exit_button = CTkButton(self.upper_panel, text="Выйти из игры", command=self.destroy)
+        exit_button = CTkButton(self.upper_panel, text="Выйти из игры", command=sys.exit)
         exit_button.grid(row=0, column=2, sticky="ne")
 
     def return_button_show(self) -> None:
